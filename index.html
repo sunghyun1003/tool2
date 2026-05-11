@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>중도금 후불이자 계산기</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0b; --surface: #141416; --surface2: #1c1c1f; --surface3: #242428;
+  --border: #27272b; --border2: #35353b;
+  --accent: #b8e636; --accent-dim: rgba(184,230,54,.10); --accent-mid: rgba(184,230,54,.22);
+  --text: #eaeaed; --text2: #7a7a85; --text3: #4a4a54;
+  --due: #f0a030; --loan: #3ea8e8; --paid: #38c96a; --danger: #f04848; --purple: #a06ce4;
+  --radius: 14px; --radius-sm: 8px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { -webkit-tap-highlight-color: transparent; }
+body { background: var(--bg); color: var(--text); font-family: 'Noto Sans KR', sans-serif; font-size: 13px; min-height: 100vh; -webkit-font-smoothing: antialiased; padding-bottom: 40px; }
+
+.header { background: rgba(20,20,22,.88); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); padding: 16px 20px 14px; position: sticky; top: 0; z-index: 100; }
+.header-top { display: flex; align-items: center; gap: 10px; margin-bottom: 2px; }
+.header-badge { font-size: 9px; letter-spacing: .18em; color: var(--accent); font-weight: 700; text-transform: uppercase; background: var(--accent-dim); border: 1px solid var(--accent-mid); border-radius: 20px; padding: 2px 10px; }
+.header-title { font-size: 20px; font-weight: 900; letter-spacing: -.04em; line-height: 1; }
+.header-sub { font-size: 11px; color: var(--text3); margin-top: 3px; }
+
+.container { max-width: 680px; margin: 0 auto; padding: 16px; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 12px; }
+.card-header { padding: 13px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 7px; }
+.card-icon { font-size: 16px; }
+.card-title { font-size: 12px; font-weight: 700; letter-spacing: -.01em; flex: 1; }
+.card-badge-opt { font-size: 10px; color: var(--text3); }
+.card-body { padding: 14px 16px; }
+
+.field-group { display: flex; flex-direction: column; gap: 14px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field-label { font-size: 10px; color: var(--text2); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
+.field-hint { font-size: 10px; color: var(--text3); margin-top: -2px; line-height: 1.5; }
+
+.seg-group { display: flex; gap: 4px; }
+.seg-btn { flex: 1; min-width: 60px; padding: 10px 6px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 700; cursor: pointer; border: 1px solid var(--border2); background: var(--surface2); color: var(--text2); transition: all .15s; font-family: inherit; text-align: center; -webkit-user-select: none; user-select: none; }
+.seg-btn.active { background: var(--accent); border-color: var(--accent); color: #000; }
+.seg-btn:active { opacity: .75; }
+
+.inp-wrap { position: relative; display: flex; align-items: center; }
+.inp { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 12px 14px; font-size: 15px; font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--text); outline: none; transition: border-color .15s; }
+.inp:focus { border-color: var(--accent); }
+.inp-unit { position: absolute; right: 12px; font-size: 11px; color: var(--text3); font-weight: 500; pointer-events: none; }
+.inp-auto { background: var(--surface3); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 14px; font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--accent); }
+
+.type-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.type-btn { padding: 10px 4px; border-radius: var(--radius-sm); border: 1px solid var(--border2); background: var(--surface2); color: var(--text2); font-size: 12px; font-weight: 700; cursor: pointer; text-align: center; transition: all .15s; font-family: inherit; -webkit-user-select: none; user-select: none; display: flex; flex-direction: column; gap: 3px; align-items: center; }
+.type-btn .type-name { font-size: 13px; }
+.type-btn .type-price { font-size: 9px; color: var(--text3); font-family: 'JetBrains Mono', monospace; font-weight: 400; }
+.type-btn.active { background: var(--accent-dim); border-color: var(--accent-mid); color: var(--accent); }
+.type-btn.active .type-price { color: rgba(184,230,54,.6); }
+.type-btn:active { opacity: .7; }
+
+.date-inp { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 11px 14px; font-size: 14px; font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--text); outline: none; transition: border-color .15s; -webkit-appearance: none; appearance: none; }
+.date-inp:focus { border-color: var(--accent); }
+.date-inp::-webkit-calendar-picker-indicator { filter: invert(1) opacity(.4); cursor: pointer; }
+
+/* ── 중도 상환 ── */
+.prepay-toggle-btn { width: 100%; padding: 13px 16px; background: transparent; border: 1px dashed var(--border2); border-radius: var(--radius-sm); color: var(--text2); font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all .2s; display: flex; align-items: center; justify-content: center; gap: 8px; -webkit-user-select: none; user-select: none; }
+.prepay-toggle-btn:hover { border-color: var(--purple); color: var(--purple); background: rgba(160,108,228,.04); }
+.prepay-toggle-btn.active { border-color: var(--purple); color: var(--purple); background: rgba(160,108,228,.06); border-style: solid; }
+.ptb-icon { font-size: 15px; transition: transform .25s; display: inline-block; }
+.prepay-toggle-btn.active .ptb-icon { transform: rotate(45deg); }
+
+.prepay-section { display: none; margin-top: 10px; background: var(--surface2); border: 1px solid rgba(160,108,228,.2); border-radius: var(--radius-sm); overflow: hidden; }
+.prepay-section.open { display: block; }
+
+.prepay-sec-header { background: rgba(160,108,228,.08); border-bottom: 1px solid rgba(160,108,228,.15); padding: 9px 14px; display: flex; align-items: center; gap: 8px; }
+.prepay-sec-title { font-size: 11px; font-weight: 700; color: var(--purple); }
+.prepay-sec-sub { font-size: 10px; color: var(--text3); margin-left: auto; }
+
+.prepay-list { padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+
+.prepay-row { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; display: flex; align-items: flex-start; gap: 8px; }
+.prepay-idx { width: 20px; height: 20px; border-radius: 50%; background: rgba(160,108,228,.12); border: 1px solid rgba(160,108,228,.25); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; color: var(--purple); flex-shrink: 0; margin-top: 2px; }
+.prepay-fields { display: flex; gap: 8px; flex: 1; flex-wrap: wrap; }
+.prepay-field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 120px; }
+.prepay-field-label { font-size: 9px; color: var(--text3); letter-spacing: .05em; }
+.prepay-inp-inner { background: var(--surface2); border: 1px solid var(--border2); border-radius: 6px; padding: 8px 10px; font-size: 13px; font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--text); outline: none; width: 100%; transition: border-color .15s; -webkit-appearance: none; appearance: none; }
+.prepay-inp-inner:focus { border-color: var(--purple); }
+.prepay-inp-inner::-webkit-calendar-picker-indicator { filter: invert(1) opacity(.35); cursor: pointer; }
+.prepay-del { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 20px; line-height: 1; padding: 2px 4px; border-radius: 4px; flex-shrink: 0; transition: color .15s; margin-top: 1px; }
+.prepay-del:hover { color: var(--danger); }
+
+.prepay-summary-box { margin: 0 10px 8px; background: rgba(160,108,228,.06); border: 1px solid rgba(160,108,228,.15); border-radius: 6px; padding: 9px 12px; font-size: 11px; color: var(--text2); line-height: 1.7; display: none; }
+.prepay-summary-box.show { display: block; }
+
+.prepay-add-btn { width: 100%; padding: 10px; background: transparent; border: none; border-top: 1px dashed rgba(160,108,228,.2); color: var(--purple); font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; transition: background .15s; display: flex; align-items: center; justify-content: center; gap: 5px; }
+.prepay-add-btn:hover { background: rgba(160,108,228,.06); }
+
+/* ── 계산 버튼 ── */
+.calc-btn { width: 100%; padding: 16px; background: var(--accent); border: none; border-radius: var(--radius-sm); color: #000; font-size: 14px; font-weight: 900; letter-spacing: .02em; cursor: pointer; font-family: inherit; transition: all .15s; -webkit-user-select: none; user-select: none; }
+.calc-btn:active { opacity: .85; transform: scale(.99); }
+
+/* ── 결과 ── */
+.result-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 12px; }
+.result-card.highlight { background: rgba(184,230,54,.04); border-color: rgba(184,230,54,.25); }
+
+.result-main { padding: 20px 18px; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; border-bottom: 1px solid var(--border); }
+.result-main-label { font-size: 10px; color: var(--accent); font-weight: 700; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 6px; }
+.result-main-value { font-family: 'JetBrains Mono', monospace; font-size: 30px; font-weight: 700; color: var(--accent); letter-spacing: -.03em; line-height: 1; }
+.result-main-unit { font-size: 14px; color: rgba(184,230,54,.6); margin-left: 4px; }
+.result-main-sub { font-size: 10px; color: var(--text3); margin-top: 6px; line-height: 1.5; }
+.result-badge { background: var(--accent-dim); border: 1px solid var(--accent-mid); border-radius: 20px; padding: 5px 12px; font-size: 11px; font-weight: 700; color: var(--accent); white-space: nowrap; flex-shrink: 0; }
+
+.saving-strip { display: flex; align-items: center; gap: 10px; padding: 10px 18px; background: rgba(160,108,228,.07); border-top: 1px solid rgba(160,108,228,.15); }
+.saving-label { font-size: 10px; color: var(--purple); font-weight: 600; flex: 1; }
+.saving-value { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--purple); }
+
+.kpi-grid { display: grid; gap: 1px; background: var(--border); }
+.kpi-grid.c3 { grid-template-columns: 1fr 1fr 1fr; }
+.kpi-item { background: var(--surface); padding: 14px 16px; }
+.kpi-label { font-size: 9px; color: var(--text3); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 6px; }
+.kpi-value { font-family: 'JetBrains Mono', monospace; font-size: 17px; font-weight: 700; line-height: 1.2; }
+.kpi-sub { font-size: 9px; color: var(--text3); margin-top: 4px; line-height: 1.4; }
+.kpi-item.hl { background: rgba(184,230,54,.06); }
+
+.round-table { width: 100%; border-collapse: collapse; }
+.round-table th { padding: 9px 14px; text-align: left; font-size: 9px; color: var(--text3); letter-spacing: .08em; text-transform: uppercase; background: var(--surface2); font-weight: 500; white-space: nowrap; }
+.round-table th:last-child { text-align: right; }
+.round-table td { padding: 11px 14px; border-top: 1px solid var(--border); font-size: 12px; vertical-align: middle; }
+.round-table td:last-child { text-align: right; font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 12px; white-space: nowrap; }
+.rnd-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border2); font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; margin-right: 8px; color: var(--text2); flex-shrink: 0; }
+.rnd-name { display: flex; align-items: center; }
+.exec-dt { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text3); margin-top: 2px; }
+.bar-w { width: 60px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; display: inline-block; margin-right: 8px; vertical-align: middle; }
+.bar-f { height: 100%; border-radius: 2px; background: var(--accent); transition: width .5s ease; }
+.prepay-tag { display: inline-block; background: rgba(160,108,228,.12); border: 1px solid rgba(160,108,228,.22); color: var(--purple); border-radius: 4px; padding: 1px 6px; font-size: 9px; font-weight: 700; margin-left: 6px; }
+
+.rate-table { width: 100%; border-collapse: collapse; }
+.rate-table th { padding: 8px 14px; text-align: left; font-size: 9px; color: var(--text3); letter-spacing: .08em; text-transform: uppercase; background: var(--surface2); font-weight: 500; }
+.rate-table th:last-child { text-align: right; }
+.rate-table td { padding: 9px 14px; border-top: 1px solid var(--border); font-size: 11px; font-family: 'JetBrains Mono', monospace; vertical-align: middle; }
+.rate-table td:last-child { text-align: right; font-weight: 600; }
+.rate-chip { display: inline-block; background: rgba(62,168,232,.1); border: 1px solid rgba(62,168,232,.2); color: var(--loan); border-radius: 6px; padding: 2px 8px; font-size: 10px; font-weight: 700; }
+.rate-chip.now { background: rgba(184,230,54,.12); border-color: rgba(184,230,54,.25); color: var(--accent); }
+
+.info-box { background: rgba(240,160,48,.06); border: 1px solid rgba(240,160,48,.18); border-radius: var(--radius-sm); padding: 12px 14px; font-size: 11px; color: var(--text2); line-height: 1.7; margin: 14px 16px; }
+.info-box strong { color: var(--due); }
+
+.result-placeholder { padding: 40px 20px; text-align: center; color: var(--text3); font-size: 12px; line-height: 2; }
+.placeholder-icon { font-size: 32px; margin-bottom: 8px; }
+
+.rounds-display { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--accent); text-align: center; }
+
+@keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.animate-in { animation: fadeUp .3s ease both; }
+
+@media (max-width: 420px) {
+  .kpi-value { font-size: 14px; }
+  .result-main-value { font-size: 24px; }
+  .prepay-fields { flex-direction: column; }
+  .kpi-grid.c3 { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top"><div class="header-badge">퍼스비엘</div></div>
+  <div class="header-title">중도금 후불이자 계산기</div>
+  <div class="header-sub">회차별 실행일 · 구간금리 정밀 계산 · 중도상환 반영</div>
+</div>
+
+<div class="container">
+
+  <!-- ① 타입 및 분양가 -->
+  <div class="card">
+    <div class="card-header"><span class="card-icon">🏠</span><span class="card-title">타입 및 분양가</span></div>
+    <div class="card-body">
+      <div class="field-group">
+        <div class="field">
+          <div class="field-label">① 타입 선택</div>
+          <div class="type-grid">
+            <button class="type-btn" data-type="49A" onclick="selectType('49A')"><span class="type-name">49A</span><span class="type-price">5.64억</span></button>
+            <button class="type-btn" data-type="49B" onclick="selectType('49B')"><span class="type-name">49B</span><span class="type-price">5.43억</span></button>
+            <button class="type-btn" data-type="59A" onclick="selectType('59A')"><span class="type-name">59A</span><span class="type-price">7.80억</span></button>
+            <button class="type-btn" data-type="59B" onclick="selectType('59B')"><span class="type-name">59B</span><span class="type-price">7.71억</span></button>
+            <button class="type-btn" data-type="74"  onclick="selectType('74')"><span class="type-name">74</span><span class="type-price">9.23억</span></button>
+            <button class="type-btn" data-type="84A" onclick="selectType('84A')"><span class="type-name">84A</span><span class="type-price">10.79억</span></button>
+          </div>
+          <div class="field-hint">선택 시 분양가 자동 입력 (최고 분양가 기준)</div>
+        </div>
+        <div class="field">
+          <div class="field-label">② 분양가</div>
+          <div class="inp-wrap">
+            <input class="inp" id="inp-price" type="text" placeholder="예: 780,000,000" oninput="formatPrice(this)" onfocus="clearComma(this)">
+            <span class="inp-unit">원</span>
+          </div>
+          <div class="field-hint" id="price-hint" style="display:none;">최고 분양가 기준 · 계약서 금액으로 수정 가능</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ② 중도금 대출 정보 -->
+  <div class="card">
+    <div class="card-header"><span class="card-icon">🏦</span><span class="card-title">중도금 대출 정보</span></div>
+    <div class="card-body">
+      <div class="field-group">
+        <div class="field">
+          <div class="field-label">① 대출 실행 회차</div>
+          <div class="seg-group">
+            <button class="seg-btn" data-rounds="6" onclick="selectRounds(6)">6회차 전액</button>
+            <button class="seg-btn" data-rounds="5" onclick="selectRounds(5)">5회차 (2~6)</button>
+            <button class="seg-btn" data-rounds="4" onclick="selectRounds(4)">4회차 (3~6)</button>
+          </div>
+          <div class="seg-group" style="margin-top:4px;">
+            <button class="seg-btn" data-rounds="3" onclick="selectRounds(3)">3회차 (4~6)</button>
+            <button class="seg-btn" data-rounds="2" onclick="selectRounds(2)">2회차 (5~6)</button>
+            <button class="seg-btn" data-rounds="1" onclick="selectRounds(1)">1회차 (6차)</button>
+          </div>
+          <div style="margin-top:8px;"><div class="rounds-display" id="rounds-display">—</div></div>
+        </div>
+        <div class="field">
+          <div class="field-label">② 중도금 대출 금액 (자동 계산)</div>
+          <div class="inp-auto" id="midloan-auto">분양가와 회차를 선택하면 자동 계산됩니다</div>
+          <div class="field-hint">= 분양가 × 10% × 대출 회차 수</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ 중도 상환 (선택) -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-icon">💜</span>
+      <span class="card-title">중도 상환 내역</span>
+      <span class="card-badge-opt">선택 입력</span>
+    </div>
+    <div class="card-body">
+      <button class="prepay-toggle-btn" id="prepay-toggle" onclick="togglePrepay()">
+        <span class="ptb-icon">＋</span>
+        중도 상환이 있는 경우 클릭하여 입력
+      </button>
+
+      <div class="prepay-section" id="prepay-section">
+        <div class="prepay-sec-header">
+          <span style="font-size:13px;">💜</span>
+          <span class="prepay-sec-title">중도 상환 내역</span>
+          <span class="prepay-sec-sub">건수 제한 없이 추가 가능</span>
+        </div>
+        <div class="prepay-list" id="prepay-list"></div>
+        <div class="prepay-summary-box" id="prepay-summary-box"></div>
+        <button class="prepay-add-btn" onclick="addPrepayRow()">＋ 상환 내역 추가</button>
+      </div>
+
+      <div class="field-hint" style="margin-top:10px;">
+        입력한 상환 일자 이후부터 해당 금액만큼 원금이 줄어든 것으로 이자를 계산합니다
+      </div>
+    </div>
+  </div>
+
+  <!-- ④ 잔금 납부 예정일 -->
+  <div class="card">
+    <div class="card-header"><span class="card-icon">📅</span><span class="card-title">잔금 납부 예정일</span></div>
+    <div class="card-body">
+      <div class="field-group">
+        <div class="field">
+          <div class="field-label">잔금일 선택</div>
+          <!-- ▼ min을 2026-06-10으로 수정 -->
+          <input class="date-inp" id="inp-date" type="date" value="2026-06-10" min="2026-06-10" max="2027-12-31">
+          <div class="field-hint">※ 잔금 납부 가능일: 2026년 6월 10일부터 · 이자는 각 회차 실행일부터 잔금일까지 계산됩니다</div>
+        </div>
+        <button class="calc-btn" onclick="calculate()">후불이자 계산하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 결과 -->
+  <div id="result-area">
+    <div class="result-card" style="margin-bottom:12px;">
+      <div class="result-placeholder">
+        <div class="placeholder-icon">🧮</div>
+        타입, 대출 회차, 잔금일을 선택한 후<br>
+        <strong style="color:var(--text2);">계산하기</strong> 버튼을 눌러주세요
+      </div>
+    </div>
+  </div>
+
+  <!-- 금리 구간 안내 -->
+  <div class="card">
+    <div class="card-header"><span class="card-icon">📊</span><span class="card-title">적용 금리 구간</span></div>
+    <table class="rate-table">
+      <thead><tr><th>기간</th><th style="text-align:right;">적용 금리</th></tr></thead>
+      <tbody id="rate-table-body"></tbody>
+    </table>
+    <div style="padding:10px 14px 14px;font-size:10px;color:var(--text3);line-height:1.7;">
+      ※ 금리 구간은 건설사-은행 약정 기준으로 고정 적용됩니다.<br>
+      ※ 구간이 바뀌는 날에 금리가 자동 전환됩니다.
+    </div>
+  </div>
+
+  <!-- 회차별 실행일 -->
+  <div class="card">
+    <div class="card-header"><span class="card-icon">🗓</span><span class="card-title">회차별 중도금 실행일</span></div>
+    <table class="rate-table">
+      <thead><tr><th>회차</th><th>실행일</th><th style="text-align:right;">비고</th></tr></thead>
+      <tbody id="exec-table-body"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// 기준 데이터
+// ═══════════════════════════════════════════
+const TYPE_DATA = {
+  '49A': { price: 564000000 }, '49B': { price: 543000000 },
+  '59A': { price: 780000000 }, '59B': { price: 771000000 },
+  '74':  { price: 923000000 }, '84A': { price: 1079000000 },
+};
+
+// ▼ 금리 구간: 2026-04-29부터 4.11%로 변경 반영
+const MID_RATE_PERIODS = [
+  { from: '2023-10-16', to: '2024-04-28', rate: 4.96 },
+  { from: '2024-04-29', to: '2024-10-28', rate: 4.89 },
+  { from: '2024-10-29', to: '2025-04-28', rate: 4.70 },
+  { from: '2025-04-29', to: '2025-10-28', rate: 4.14 },
+  { from: '2025-10-29', to: '2026-04-28', rate: 3.82 },
+  { from: '2026-04-29', to: '2099-12-31', rate: 4.11 },
+];
+
+const MID_EXEC_DATES = [
+  '2023-10-16','2024-04-15','2024-10-15',
+  '2025-03-17','2025-08-18','2026-01-15'
+];
+
+// ═══════════════════════════════════════════
+// 상태
+// ═══════════════════════════════════════════
+let selectedType = null;
+let selectedRounds = null;
+let prepayOpen = false;
+let prepayList = [];   // [{ id, date:'', amountMW:0 }]
+let prepayNextId = 1;
+
+// ═══════════════════════════════════════════
+// 핵심 계산: 중도상환 반영 이자 계산
+// ═══════════════════════════════════════════
+
+// 특정 날짜의 적용 금리
+function getRateAt(date) {
+  for (const p of MID_RATE_PERIODS) {
+    if (date >= new Date(p.from) && date <= new Date(p.to)) return p.rate;
+  }
+  return MID_RATE_PERIODS[MID_RATE_PERIODS.length - 1].rate;
+}
+
+/**
+ * 이자 계산 (중도상환 반영)
+ *
+ * [계산 방식]
+ * 회차 구분 없이 전체 잔여 원금 하나로 관리.
+ * - 각 회차 실행일: 잔여 원금에 perRoundMW 누적
+ * - 중도상환일: 잔여 원금에서 상환액 차감
+ * - 각 구간: 잔여원금 × 구간금리 × 일수/365 합산
+ */
+function calcWithPrepay(priceMW, balanceDateStr, rounds, prepays) {
+  if (!priceMW || !balanceDateStr || rounds <= 0) return { total: 0, details: [] };
+
+  const perRoundMW = priceMW * 0.1;
+  const endDate = new Date(balanceDateStr);
+  const startIdx = 6 - rounds;
+
+  const validPrepays = prepays
+    .filter(p => p.date && p.amountMW > 0)
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  // 모든 이벤트 수집 (회차실행 / 중도상환 / 금리변경 / 잔금일)
+  const allEvents = [];
+  MID_EXEC_DATES.forEach((d, i) => {
+    if (i < startIdx) return;
+    if (new Date(d) < endDate) allEvents.push({ date: new Date(d), type: 'exec', amt: perRoundMW, round: i + 1 });
+  });
+  validPrepays.forEach(p => {
+    allEvents.push({ date: new Date(p.date), type: 'prepay', amt: -p.amountMW });
+  });
+  MID_RATE_PERIODS.forEach(p => {
+    allEvents.push({ date: new Date(p.from), type: 'rate' });
+  });
+  allEvents.push({ date: new Date(endDate), type: 'end' });
+
+  // 시간순 정렬 (같은 날: exec → prepay → rate 순)
+  const typeOrder = { exec: 0, prepay: 1, rate: 2, end: 3 };
+  allEvents.sort((a, b) => a.date - b.date || typeOrder[a.type] - typeOrder[b.type]);
+
+  // 구간 경계점
+  const bpSet = new Set(allEvents.map(e => e.date.getTime()));
+  const bps = [...bpSet].sort((a, b) => a - b).map(t => new Date(t));
+
+  let principal = 0;
+  let cursor = new Date(MID_EXEC_DATES[startIdx]);
+  let totalInterest = 0;
+
+  // 구간별 이자 내역 (표시용)
+  const segLog = [];
+
+  for (const segEnd of bps) {
+    if (cursor >= endDate) break;
+
+    if (cursor < segEnd) {
+      const days = Math.round((segEnd - cursor) / 86400000);
+      if (days > 0 && principal > 0) {
+        const rate = getRateAt(cursor);
+        const interest = principal * (rate / 100) * days / 365;
+        totalInterest += interest;
+        segLog.push({ from: new Date(cursor), to: new Date(segEnd), days, rate, principal, interest });
+      }
+    }
+
+    // segEnd 시점 이벤트 처리 (다음 구간 시작 전에 원금 변경)
+    allEvents.filter(e => Math.abs(e.date.getTime() - segEnd.getTime()) < 1000).forEach(e => {
+      if (e.type === 'exec')    principal += e.amt;
+      if (e.type === 'prepay')  principal = Math.max(0, principal + e.amt); // amt가 음수
+    });
+
+    cursor = new Date(segEnd);
+  }
+
+  // 회차별 이자 상세 (표시용: 각 회차가 기여한 이자)
+  // 회차 실행 후 다음 회차 실행 전까지 그 회차 원금이 기여한 비율로 배분
+  const details = [];
+  const activeExecs = MID_EXEC_DATES.slice(startIdx).filter(d => new Date(d) < endDate);
+
+  activeExecs.forEach((execStr, i) => {
+    const execDate = new Date(execStr);
+    let roundInterest = 0;
+    let roundDays = 0;
+
+    segLog.forEach(seg => {
+      if (seg.from >= execDate) {
+        // 이 구간에서 이 회차 원금(perRoundMW)이 기여한 이자 비율
+        // 잔여원금이 중도상환으로 줄었을 수 있으므로 min 처리
+        const contribution = Math.min(perRoundMW, seg.principal) / seg.principal;
+        roundInterest += seg.interest * contribution;
+        roundDays += seg.days;
+      }
+    });
+
+    details.push({
+      round: startIdx + i + 1,
+      execDate: execStr,
+      interest: Math.round(roundInterest),
+      days: roundDays,
+      principalMW: perRoundMW,
+      hasPrepay: validPrepays.length > 0,
+    });
+  });
+
+  return { total: Math.round(totalInterest), details };
+}
+
+function applyEvents() {} // 미사용 더미
+
+// ═══════════════════════════════════════════
+// UI — 기본 입력
+// ═══════════════════════════════════════════
+function selectType(t) {
+  selectedType = t;
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.toggle('active', b.dataset.type === t));
+  document.getElementById('inp-price').value = TYPE_DATA[t].price.toLocaleString('ko-KR');
+  document.getElementById('price-hint').style.display = 'block';
+  updateMidloanAuto();
+}
+
+function selectRounds(r) {
+  selectedRounds = r;
+  document.querySelectorAll('.seg-btn').forEach(b => b.classList.toggle('active', parseInt(b.dataset.rounds) === r));
+  const labels = { 6:'6회차 전액 대출 (1~6차)', 5:'5회차 대출 (2~6차)', 4:'4회차 대출 (3~6차)', 3:'3회차 대출 (4~6차)', 2:'2회차 대출 (5~6차)', 1:'1회차 대출 (6차만)' };
+  document.getElementById('rounds-display').textContent = labels[r] || '—';
+  updateMidloanAuto();
+  updatePrepayDateMins(); // 회차 변경 시 상환 날짜 제한도 갱신
+}
+
+function updateMidloanAuto() {
+  const price = getPrice();
+  const el = document.getElementById('midloan-auto');
+  if (price > 0 && selectedRounds) {
+    el.textContent = (price * 0.1 * selectedRounds).toLocaleString('ko-KR') + '원';
+  } else {
+    el.textContent = '분양가와 회차를 선택하면 자동 계산됩니다';
+  }
+}
+
+function getPrice() { return parseInt(document.getElementById('inp-price').value.replace(/[^0-9]/g,'')) || 0; }
+function formatPrice(el) { const v=el.value.replace(/[^0-9]/g,''); el.value=v?parseInt(v).toLocaleString('ko-KR'):''; updateMidloanAuto(); }
+function clearComma(el) { el.value=el.value.replace(/,/g,''); }
+
+// ═══════════════════════════════════════════
+// UI — 중도 상환
+// ═══════════════════════════════════════════
+function togglePrepay() {
+  prepayOpen = !prepayOpen;
+  document.getElementById('prepay-toggle').classList.toggle('active', prepayOpen);
+  document.getElementById('prepay-section').classList.toggle('open', prepayOpen);
+  if (prepayOpen && prepayList.length === 0) addPrepayRow();
+}
+
+function addPrepayRow() {
+  const id = prepayNextId++;
+  prepayList.push({ id, date: '', amountMW: 0 });
+
+  // 현재 선택된 대출 회차의 첫 실행일 계산
+  function getFirstExecDate() {
+    if (!selectedRounds) return '2023-10-16';
+    const startIdx = 6 - selectedRounds;
+    return MID_EXEC_DATES[startIdx];
+  }
+
+  const firstExec = getFirstExecDate();
+  const el = document.createElement('div');
+  el.className = 'prepay-row';
+  el.id = `pr-${id}`;
+  el.innerHTML = `
+    <div class="prepay-idx">${prepayList.length}</div>
+    <div class="prepay-fields">
+      <div class="prepay-field">
+        <div class="prepay-field-label">상환 일자</div>
+        <input class="prepay-inp-inner" type="date" min="${firstExec}" max="2027-12-31"
+          onchange="setPrepayDate(${id}, this.value, this)">
+        <div id="prepay-date-warn-${id}" style="font-size:9px;color:var(--danger);margin-top:3px;display:none;">
+          ⚠ 첫 실행일(${fmtDate(firstExec)}) 이후 날짜를 입력해 주세요
+        </div>
+      </div>
+      <div class="prepay-field">
+        <div class="prepay-field-label">상환 금액</div>
+        <input class="prepay-inp-inner" type="text" placeholder="예: 50,000,000"
+          oninput="fmtPrepayAmt(this, ${id})" onfocus="this.value=this.value.replace(/,/g,'')">
+      </div>
+    </div>
+    <button class="prepay-del" onclick="delPrepayRow(${id})" title="삭제">×</button>
+  `;
+  document.getElementById('prepay-list').appendChild(el);
+  refreshPrepayIndexes();
+  updatePrepaySummary();
+}
+
+// 회차 변경 시 기존 상환 날짜 입력란의 min도 갱신
+function updatePrepayDateMins() {
+  if (!selectedRounds) return;
+  const firstExec = MID_EXEC_DATES[6 - selectedRounds];
+  prepayList.forEach(r => {
+    const inp = document.querySelector(`#pr-${r.id} input[type="date"]`);
+    const warn = document.getElementById(`prepay-date-warn-${r.id}`);
+    if (inp) {
+      inp.min = firstExec;
+      // 이미 입력된 날짜가 min보다 이전이면 경고 표시
+      if (r.date && r.date < firstExec) {
+        if (warn) warn.style.display = 'block';
+      } else {
+        if (warn) warn.style.display = 'none';
+      }
+    }
+  });
+  updatePrepaySummary();
+}
+
+function delPrepayRow(id) {
+  prepayList = prepayList.filter(r => r.id !== id);
+  const el = document.getElementById(`pr-${id}`);
+  if (el) el.remove();
+  refreshPrepayIndexes();
+  updatePrepaySummary();
+}
+
+function refreshPrepayIndexes() {
+  document.querySelectorAll('.prepay-idx').forEach((el, i) => { el.textContent = i + 1; });
+}
+
+function setPrepayDate(id, val, inputEl) {
+  const r = prepayList.find(r => r.id === id);
+  const warn = document.getElementById(`prepay-date-warn-${id}`);
+  const firstExec = selectedRounds ? MID_EXEC_DATES[6 - selectedRounds] : '2023-10-16';
+
+  if (val && val < firstExec) {
+    // 유효 범위 밖 → 저장하지 않고 경고 표시
+    if (warn) warn.style.display = 'block';
+    if (inputEl) inputEl.value = '';
+    if (r) r.date = '';
+  } else {
+    if (warn) warn.style.display = 'none';
+    if (r) r.date = val;
+  }
+  updatePrepaySummary();
+}
+
+function fmtPrepayAmt(el, id) {
+  const v = el.value.replace(/[^0-9]/g, '');
+  el.value = v ? parseInt(v).toLocaleString('ko-KR') : '';
+  const r = prepayList.find(r => r.id === id);
+  if (r) r.amountMW = v ? parseInt(v) / 10000 : 0;
+  updatePrepaySummary();
+}
+
+function getValidPrepays() {
+  const firstExec = selectedRounds ? MID_EXEC_DATES[6 - selectedRounds] : '2023-10-16';
+  return prepayList
+    .filter(r => r.date && r.amountMW > 0 && r.date >= firstExec)
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+}
+
+function updatePrepaySummary() {
+  const valid = getValidPrepays();
+  const box = document.getElementById('prepay-summary-box');
+  if (!valid.length) { box.classList.remove('show'); return; }
+  const totalMW = valid.reduce((s, r) => s + r.amountMW, 0);
+  box.classList.add('show');
+  box.innerHTML = `<strong style="color:var(--purple);">입력된 상환 내역</strong> · 총 ${valid.length}건 · 합계 <strong style="color:var(--purple);">${totalMW.toLocaleString()}만원</strong><br>
+    <span style="color:var(--text3);">${valid.map(r => fmtDate(r.date) + ' ' + r.amountMW.toLocaleString() + '만원').join(' &nbsp;/&nbsp; ')}</span>`;
+}
+
+// ═══════════════════════════════════════════
+// 계산 실행
+// ═══════════════════════════════════════════
+function calculate() {
+  const priceWon = getPrice();
+  const balanceDateStr = document.getElementById('inp-date').value;
+  const rounds = selectedRounds;
+
+  if (!priceWon || priceWon < 1000000) { alert('분양가를 입력해 주세요.'); return; }
+  if (!rounds) { alert('대출 회차를 선택해 주세요.'); return; }
+  if (!balanceDateStr) { alert('잔금일을 선택해 주세요.'); return; }
+
+  const priceMW = priceWon / 10000;
+  const midloanMW = priceMW * 0.1 * rounds;
+  const validPrepays = getValidPrepays();
+
+  const { total: totalInterest, details } = calcWithPrepay(priceMW, balanceDateStr, rounds, validPrepays);
+
+  // 절감액: 중도상환 없을 때와 비교
+  let saving = 0;
+  if (validPrepays.length > 0) {
+    const { total: withoutPrepay } = calcWithPrepay(priceMW, balanceDateStr, rounds, []);
+    saving = withoutPrepay - totalInterest;
+  }
+
+  const maxInt = details.length > 0 ? Math.max(...details.map(d => d.interest), 1) : 1;
+  const area = document.getElementById('result-area');
+  area.innerHTML = '';
+
+  // ── 메인 결과 카드
+  const mainCard = document.createElement('div');
+  mainCard.className = 'result-card highlight animate-in';
+  mainCard.innerHTML = `
+    <div class="result-main">
+      <div>
+        <div class="result-main-label">예상 후불이자 총액</div>
+        <div class="result-main-value">${totalInterest.toLocaleString()}<span class="result-main-unit">만원</span></div>
+        <div class="result-main-sub">
+          ${fmtWonFull(totalInterest * 10000)}<br>
+          ⚠️ 추정치 · 실제 은행 정산과 차이가 있을 수 있습니다
+        </div>
+      </div>
+      <div class="result-badge">${rounds}회차 대출</div>
+    </div>
+    ${saving > 0 ? `<div class="saving-strip"><span class="saving-label">💜 중도상환으로 절감되는 이자</span><span class="saving-value">−${saving.toLocaleString()}만원</span></div>` : ''}
+    <div class="kpi-grid c3">
+      <div class="kpi-item">
+        <div class="kpi-label">분양가</div>
+        <div class="kpi-value" style="font-size:13px;">${(priceWon/1e8).toFixed(2)}억</div>
+        <div class="kpi-sub">${fmtWonFull(priceWon)}</div>
+      </div>
+      <div class="kpi-item">
+        <div class="kpi-label">중도금 대출액</div>
+        <div class="kpi-value" style="font-size:13px;">${midloanMW.toLocaleString()}만</div>
+        <div class="kpi-sub">분양가 × 10% × ${rounds}회</div>
+      </div>
+      <div class="kpi-item hl">
+        <div class="kpi-label">이자율 (대출액 대비)</div>
+        <div class="kpi-value" style="font-size:13px;color:var(--accent);">${(totalInterest/midloanMW*100).toFixed(2)}%</div>
+        <div class="kpi-sub">잔금일: ${fmtDate(balanceDateStr)}</div>
+      </div>
+    </div>
+  `;
+  area.appendChild(mainCard);
+
+  // ── 회차별 상세 카드
+  const detailCard = document.createElement('div');
+  detailCard.className = 'result-card animate-in';
+  detailCard.style.animationDelay = '.08s';
+
+  let rows = details.map(d => {
+    const bw = Math.round(d.interest / maxInt * 100);
+    return `<tr>
+      <td>
+        <div class="rnd-name">
+          <span class="rnd-num">${d.round}</span>
+          <div>
+            <div style="font-weight:600;">${d.round}회차${d.hasPrepay ? '<span class="prepay-tag">중도상환 반영</span>' : ''}</div>
+            <div class="exec-dt">${fmtDate(d.execDate)} 실행</div>
+          </div>
+        </div>
+      </td>
+      <td style="color:var(--text2);font-family:'JetBrains Mono',monospace;font-size:11px;">
+        ${d.days.toLocaleString()}일<br>
+        <span style="font-size:9px;color:var(--text3);">원금 ${d.principalMW.toLocaleString()}만</span>
+      </td>
+      <td>
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;">
+          <div class="bar-w"><div class="bar-f" style="width:${bw}%"></div></div>
+          <span style="color:var(--accent);font-weight:700;">${d.interest.toLocaleString()}만원</span>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  rows += `<tr style="background:rgba(184,230,54,.04);">
+    <td colspan="2" style="font-weight:700;font-size:12px;">합계 (${rounds}회차)</td>
+    <td style="color:var(--accent);font-weight:900;font-size:14px;font-family:'JetBrains Mono',monospace;text-align:right;">${totalInterest.toLocaleString()}만원</td>
+  </tr>`;
+
+  let prepayNote = '';
+  if (validPrepays.length > 0) {
+    prepayNote = `<div style="background:rgba(160,108,228,.06);border:1px solid rgba(160,108,228,.18);border-radius:8px;padding:10px 14px;margin:10px 16px;font-size:11px;color:var(--text2);line-height:1.8;">
+      💜 <strong style="color:var(--purple);">중도상환 반영 내역</strong><br>
+      ${validPrepays.map(p=>`${fmtDate(p.date)}: <strong style="color:var(--text);">${p.amountMW.toLocaleString()}만원</strong> 상환`).join('<br>')}
+      ${saving > 0 ? `<br><strong style="color:var(--purple);">→ 이자 절감액: ${saving.toLocaleString()}만원 (미시행 대비)</strong>` : ''}
+    </div>`;
+  }
+
+  detailCard.innerHTML = `
+    <div class="card-header" style="padding:13px 16px;">
+      <span class="card-icon">📋</span>
+      <span class="card-title">회차별 이자 상세</span>
+    </div>
+    <table class="round-table">
+      <thead><tr><th>회차</th><th>기간 / 원금</th><th style="text-align:right;">이자액</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    ${prepayNote}
+    <div class="info-box">
+      <strong>계산 기준:</strong> 각 회차 실행일부터 잔금일(${fmtDate(balanceDateStr)})까지 구간금리 × 일수 / 365일 합산<br>
+      ${validPrepays.length > 0 ? '💜 중도상환일 기준으로 전체 잔여 원금에서 차감 후 이자 재산정' : ''}
+    </div>
+  `;
+  area.appendChild(detailCard);
+}
+
+// ═══════════════════════════════════════════
+// 포맷 유틸
+// ═══════════════════════════════════════════
+function fmtDate(str) {
+  const d = new Date(str);
+  return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+}
+function fmtWonFull(n) { return Math.round(n).toLocaleString('ko-KR') + '원'; }
+
+// ═══════════════════════════════════════════
+// 금리 / 실행일 테이블 렌더링
+// ═══════════════════════════════════════════
+function renderRateTable() {
+  const today = new Date();
+  document.getElementById('rate-table-body').innerHTML = MID_RATE_PERIODS.map(p => {
+    const isCurrent = today >= new Date(p.from) && today <= new Date(p.to);
+    return `<tr>
+      <td style="color:var(--text2);">${fmtDate(p.from)} ~ ${p.to==='2099-12-31' ? '이후' : fmtDate(p.to)}</td>
+      <td><span class="rate-chip ${isCurrent?'now':''}">${p.rate}%${isCurrent?' ●':''}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderExecTable() {
+  const labels = ['1회차','2회차','3회차','4회차','5회차','6회차'];
+  document.getElementById('exec-table-body').innerHTML = MID_EXEC_DATES.map((d,i)=>`
+    <tr>
+      <td style="color:var(--text2);font-weight:600;">${labels[i]}</td>
+      <td>${fmtDate(d)}</td>
+      <td style="text-align:right;color:var(--text3);font-size:10px;">분양가의 ${(i+1)*10}% 누계</td>
+    </tr>`).join('');
+}
+
+renderRateTable();
+renderExecTable();
+</script>
+</body>
+</html>
